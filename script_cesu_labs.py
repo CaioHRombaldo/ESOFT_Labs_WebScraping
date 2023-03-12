@@ -3,10 +3,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
+from datetime import datetime
 
 # configurando o driver
+dataAtual = datetime.today().strftime('%Y-%m-%d')
 driver = webdriver.Chrome("C:\\Users\\chrst\\Downloads\\chromedriver_win32\\chromedriver.exe")
-driver.get("https://app.unicesumar.edu.br/presencial/forms/informatica/?siteorigem=formulario-pre-inscricao-site")
+driver.get("https://app.unicesumar.edu.br/presencial/forms/informatica/horario.php?dados=" + dataAtual + "%7CN")
 
 # esperando todas as tabelas serem carregadas
 wait = WebDriverWait(driver, 10)
