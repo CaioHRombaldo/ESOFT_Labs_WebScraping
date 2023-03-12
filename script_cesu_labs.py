@@ -1,28 +1,59 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
+import json
 from datetime import datetime
 
-# configurando o driver
-dataAtual = datetime.today().strftime('%Y-%m-%d')
-driver = webdriver.Chrome("C:\\Users\\chrst\\Downloads\\chromedriver_win32\\chromedriver.exe")
-driver.get("https://app.unicesumar.edu.br/presencial/forms/informatica/horario.php?dados=" + dataAtual + "%7CN")
+import requests
+from bs4 import BeautifulSoup
 
-# esperando todas as tabelas serem carregadas
-wait = WebDriverWait(driver, 10)
-tables = wait.until(EC.presence_of_all_elements_located((By.TAG_NAME, "table")))
+# Extração da página.
+data_atual = datetime.today().strftime('%Y-%m-%d')
+response = requests.get(
+    f'https://app.unicesumar.edu.br/presencial/forms/informatica/horario.php?dados={data_atual}%7CN'
+)
 
-# iterando por cada tabela e imprimindo seus dados
-for table in tables:
-    # criando um objeto BeautifulSoup para analisar o conteúdo HTML da tabela
-    soup = BeautifulSoup(table.get_attribute("outerHTML"), "html.parser")
-    
-    # coletando dados da tabela com o BeautifulSoup
-    table_data = [[cell.text.strip() for cell in row.find_all(["th", "td"])] for row in soup.find_all("tr")]
-    
-    # imprimindo os dados da tabela
-    for row in table_data:
-        print("\t".join(row))
-    print("--------------------")
+if not response.status_code == 200:
+    raise Exception('Serviço indisponível ou requisição invalidada.')
+
+soup = BeautifulSoup(response.content, 'html.parser')
+labs = soup.find_all(name='td', class_='lab')
+
+# Tratamento dos dados.
+aulas_hoje = []
+for lab in labs:
+    reservas = lab.find_all(name='td')
+
+    for horario, reserva in enumerate(reservas[1:], 1):
+        lab_name = reservas[0].text
+        reserva_name = reserva.text
+
+        # Pula para a próxima execução caso não seja um laboratório.
+        if (
+            not ('Lab'.upper() in lab_name.upper())
+            or 'Carrinho'.upper() in lab_name.upper()
+        ):
+            continue
+
+        # Filtra por apenas aulas de Engenharia de Software.
+        if 'Disp'.upper() in reserva_name.upper():
+            aula = {
+                'Horário': horario,
+                'Laboratório': lab_name,
+                'Reserva': reserva_name,
+                'Data_ETL': data_atual,
+            }
+            aulas_hoje.append(aula)
+
+if not aulas_hoje:
+    aulas_hoje.append(
+        {
+            'Horário': None,
+            'Laboratório': None,
+            'Reserva': 'Nenhuma aula encontrada nos laboratórios',
+            'Data_ETL': data_atual,
+        }
+    )
+
+# Carregamento dos dados tratados.
+with open('aulas.json', 'w', encoding='utf-8') as arquivo_json:
+    json.dump(
+        aulas_hoje, arquivo_json, ensure_ascii=False, indent=4, sort_keys=True
+    )
