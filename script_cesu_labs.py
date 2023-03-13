@@ -33,7 +33,7 @@ for lab in labs:
             continue
 
         # Filtra por apenas aulas de Engenharia de Software.
-        if 'Disp'.upper() in reserva_name.upper():
+        if 'ESOFT5S-N-A'.upper() in reserva_name.upper():
             aula = {
                 'Horário': horario,
                 'Laboratório': lab_name,
