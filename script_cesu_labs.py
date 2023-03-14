@@ -4,11 +4,12 @@ from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 
+import sys
+
 # Extração da página.
+turma = sys.argv[1]
 data_atual = datetime.today().strftime('%Y-%m-%d')
-response = requests.get(
-    f'https://app.unicesumar.edu.br/presencial/forms/informatica/horario.php?dados={data_atual}%7CN'
-)
+response = requests.get(f'https://app.unicesumar.edu.br/presencial/forms/informatica/horario.php?dados={data_atual}%7CN')
 
 if not response.status_code == 200:
     raise Exception('Serviço indisponível ou requisição invalidada.')
@@ -26,14 +27,11 @@ for lab in labs:
         reserva_name = reserva.text
 
         # Pula para a próxima execução caso não seja um laboratório.
-        if (
-            not ('Lab'.upper() in lab_name.upper())
-            or 'Carrinho'.upper() in lab_name.upper()
-        ):
+        if (not ('Lab'.upper() in lab_name.upper()) or 'Carrinho'.upper() in lab_name.upper()):
             continue
 
         # Filtra por apenas aulas de Engenharia de Software.
-        if 'ESOFT5S-N-A'.upper() in reserva_name.upper():
+        if turma.upper() in reserva_name.upper():
             
             # Recupera a tabela pai que contém os elementos
             table = lab.find_parent(name='table', class_='bloco')
@@ -49,19 +47,4 @@ for lab in labs:
             }
             aulas_hoje.append(aula)
 
-if not aulas_hoje:
-    aulas_hoje.append(
-        {
-            'Horário': None,
-            'Bloco': None,
-            'Laboratório': None,
-            'Reserva': 'Nenhuma aula encontrada nos laboratórios',
-            'Data_ETL': data_atual,
-        }
-    )
-
-# Carregamento dos dados tratados.
-with open('aulas.json', 'w', encoding='utf-8') as arquivo_json:
-    json.dump(
-        aulas_hoje, arquivo_json, ensure_ascii=False, indent=4, sort_keys=False
-    )
+print(json.dumps(aulas_hoje, ensure_ascii=False, indent=4, sort_keys=False))
